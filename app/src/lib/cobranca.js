@@ -18,14 +18,16 @@ function linhaAula(aula) {
 // Cobrança de aulas avulsas (ou extras de mensalista).
 export function mensagemAulas({ aluno, aulas, chavePix }) {
   const total = aulas.reduce((s, a) => s + a.valor, 0)
-  const mesRef = aulas.length ? MESES[deISO(aulas[0].dataHora).getMonth()] : ''
+  const meses = [...new Set(aulas.map((a) => deISO(a.dataHora).getMonth()))]
+  // aulas de um mês só citam o mês; de meses mistos, não citam nenhum
+  const deMes = meses.length === 1 ? ` de ${MESES[meses[0]]}` : ''
   const singular = aulas.length === 1
   const plural = singular ? 'aula' : 'aulas'
 
   return [
     `Oi, ${primeiroNome(aluno.nome)}! Tudo bem? 😊`,
     ``,
-    `Segue o resumo ${singular ? 'da sua aula' : 'das suas aulas'} de ${mesRef}:`,
+    `Segue o resumo ${singular ? 'da sua aula' : 'das suas aulas'}${deMes}:`,
     ``,
     `📚 ${aulas.length} ${plural}:`,
     ...aulas.map(linhaAula),

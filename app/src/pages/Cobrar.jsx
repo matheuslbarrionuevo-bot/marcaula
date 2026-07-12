@@ -31,10 +31,16 @@ export default function Cobrar() {
           x.dataHora.startsWith(alvo.periodo)
         )
         let msg = mensagemMensalidade({ aluno: a, periodo: alvo.periodo, aulasDoMes, chavePix })
-        // se também houver aulas extras pendentes, acrescenta
+        // se também houver aulas extras pendentes, insere só a lista delas
+        // antes do PIX (sem repetir saudação, chave nem despedida)
         if (pend.aulas.length > 0) {
-          const extras = mensagemAulas({ aluno: a, aulas: pend.aulas, chavePix })
-          msg += `\n\n— Além disso:\n\n${extras.split('\n').slice(2).join('\n')}`
+          const linhasExtras = mensagemAulas({ aluno: a, aulas: pend.aulas, chavePix }).split('\n').slice(4)
+          const corte = linhasExtras.findIndex((l) => l.startsWith('Pode fazer o Pix'))
+          const bloco = linhasExtras.slice(0, corte === -1 ? undefined : corte).join('\n').trimEnd()
+          const linhasMsg = msg.split('\n')
+          const idxPix = linhasMsg.findIndex((l) => l.startsWith('Pix:'))
+          linhasMsg.splice(idxPix, 0, `— Além disso, ${pend.aulas.length === 1 ? 'aula extra' : 'aulas extras'}:`, '', bloco, '')
+          msg = linhasMsg.join('\n')
         }
         setMensagem(msg)
         setAulasIds(pend.aulas.map((x) => x.id))

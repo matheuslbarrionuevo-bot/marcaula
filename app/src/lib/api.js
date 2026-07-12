@@ -84,6 +84,14 @@ export async function salvarAluno(dados) {
 export async function arquivarAluno(id) {
   const { error } = await supabase.from('alunos').update({ ativo: false }).eq('id', id)
   lancar(error, 'arquivarAluno')
+  // limpa a agenda futura: aulas ainda não dadas do aluno arquivado
+  const { error: e2 } = await supabase
+    .from('aulas')
+    .delete()
+    .eq('alunoId', id)
+    .eq('status', 'agendada')
+    .gte('dataHora', toISOLocal(new Date()))
+  lancar(e2, 'arquivarAluno (aulas futuras)')
 }
 
 /* ---------------- aulas ---------------- */

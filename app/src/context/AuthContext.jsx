@@ -24,12 +24,17 @@ export function AuthProvider({ children }) {
   }
 
   async function cadastrar(nome, email, senha) {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password: senha,
       options: { data: { nome } },
     })
     if (error) throw error
+    // Supabase não devolve erro para e-mail repetido (anti-enumeração):
+    // devolve um usuário sem identities. Traduzimos para uma mensagem clara.
+    if (data?.user && !data.user.identities?.length) {
+      throw new Error('already registered')
+    }
     await migrarDadosLocais()
   }
 

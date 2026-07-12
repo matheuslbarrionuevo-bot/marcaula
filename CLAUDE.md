@@ -1,6 +1,6 @@
 # Marcaula
 
-App da **Monte Cristo** (mesma empresa do Parcere, contabilidade única — mas projeto, repo e banco 100% separados).
+App da **Monte Cristo** (mesma empresa do Parcere, contabilidade única — mas projeto, repo e banco 100% separados). Documentos centrais da empresa (plano de negócios, caixa de ideias): `C:\Users\Matheus Barrionuevo\Documents\Monte Cristo`.
 
 **O que é:** agenda + cobrança para professores particulares. Pilares: (1) grade de aulas com horários e recorrência; (2) confirmação de pagamentos casada com aulas específicas; (3) mensagem de cobrança pronta para WhatsApp (via link `wa.me` — **nunca** automação não-oficial, risco de banimento).
 

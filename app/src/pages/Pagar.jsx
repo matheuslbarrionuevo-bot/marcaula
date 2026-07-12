@@ -64,9 +64,13 @@ export default function Pagar() {
       })
     }
     if (selecionadas.size > 0) {
+      // valor editado à mão só vale quando o pagamento é apenas de aulas
+      // (mensalidades têm valor fixo próprio)
+      const valorAulasFinal =
+        valorManual !== null && mesesSel.size === 0 ? Number(valorManual) : valorAulas
       await registrarPagamento({
         alunoId,
-        valor: valorAulas,
+        valor: valorAulasFinal,
         forma,
         tipo: 'aulas',
         aulasIds: [...selecionadas],
@@ -139,6 +143,8 @@ export default function Pagar() {
             inputMode="decimal"
             value={valorManual !== null ? valorManual : valorAuto}
             onChange={(e) => setValorManual(e.target.value)}
+            disabled={mesesSel.size > 0}
+            title={mesesSel.size > 0 ? 'Mensalidades têm valor fixo' : ''}
           />
         </div>
       </div>

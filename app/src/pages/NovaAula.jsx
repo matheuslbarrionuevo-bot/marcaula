@@ -16,6 +16,7 @@ export default function NovaAula() {
   const [extra, setExtra] = useState(false)
   const [obs, setObs] = useState('')
   const [origem, setOrigem] = useState('avulsa')
+  const [dataHoraOriginal, setDataHoraOriginal] = useState(null)
 
   useEffect(() => {
     async function carregar() {
@@ -25,6 +26,7 @@ export default function NovaAula() {
         const aula = await obterAula(id)
         if (aula) {
           setAlunoId(aula.alunoId)
+          setDataHoraOriginal(aula.dataHora)
           setData(aula.dataHora.slice(0, 10))
           setHora(aula.dataHora.slice(11, 16))
           setDuracaoMin(aula.duracaoMin)
@@ -73,16 +75,30 @@ export default function NovaAula() {
   const valido = alunoId && data && hora && duracaoMin > 0
 
   async function gravar() {
+    const novaDataHora = `${data}T${hora}`
     await salvarAula({
       ...(id ? { id } : {}),
       alunoId,
-      dataHora: `${data}T${hora}`,
+      dataHora: novaDataHora,
       duracaoMin: Number(duracaoMin),
       valor: Number(valor) || 0,
       extra,
       obs,
       ...(id ? {} : { origem: 'avulsa', status: 'agendada' }),
     })
+    // Remarcação de aula recorrente: deixa uma "lápide" cancelada no
+    // horário original para a materialização não recriar a aula lá.
+    if (id && origem === 'recorrente' && dataHoraOriginal && dataHoraOriginal !== novaDataHora) {
+      await salvarAula({
+        alunoId,
+        dataHora: dataHoraOriginal,
+        duracaoMin: Number(duracaoMin),
+        status: 'cancelada',
+        valor: 0,
+        origem: 'recorrente',
+        obs: 'remarcada',
+      })
+    }
     nav(-1)
   }
 
