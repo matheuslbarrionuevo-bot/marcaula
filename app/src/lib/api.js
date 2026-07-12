@@ -1,66 +1,65 @@
-// Camada de dados do Marcaula — Fase 1: localStorage.
-// Todas as funções são assíncronas de propósito: na Fase 2 esta camada
-// vira Supabase sem mexer em nenhuma tela (mesmo padrão do Parcere).
+// Camada de dados do Marcaula — Fase 2: Supabase.
+// Mesmas assinaturas da Fase 1 (localStorage): as telas não mudam.
+// RLS garante que cada professor só vê os próprios dados.
 
+import { supabase } from './supabase.js'
 import { toISOLocal, deISO, hoje, addDias, inicioSemana, periodoDe } from './datas.js'
-
-const K = {
-  professor: 'mc_professor',
-  alunos: 'mc_alunos',
-  aulas: 'mc_aulas',
-  pagamentos: 'mc_pagamentos',
-}
-
-function ler(chave, padrao) {
-  try {
-    const raw = localStorage.getItem(chave)
-    return raw ? JSON.parse(raw) : padrao
-  } catch {
-    return padrao
-  }
-}
-
-function gravar(chave, valor) {
-  localStorage.setItem(chave, JSON.stringify(valor))
-}
 
 function uid() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
 }
 
+function lancar(error, onde) {
+  if (error) throw new Error(`${onde}: ${error.message}`)
+}
+
 /* ---------------- professor (config) ---------------- */
 
 export async function getProfessor() {
-  return ler(K.professor, null)
+  const { data, error } = await supabase.from('professores').select('*').maybeSingle()
+  lancar(error, 'getProfessor')
+  return data
 }
 
 export async function salvarProfessor(dados) {
-  const atual = ler(K.professor, {})
-  const novo = { ...atual, ...dados }
-  gravar(K.professor, novo)
-  return novo
+  const { data: sessao } = await supabase.auth.getUser()
+  const usuario = sessao?.user
+  if (!usuario) throw new Error('salvarProfessor: sem sessão')
+  const { data, error } = await supabase
+    .from('professores')
+    .upsert({ id: usuario.id, ...dados })
+    .select()
+    .single()
+  lancar(error, 'salvarProfessor')
+  return data
 }
 
 /* ---------------- alunos ---------------- */
 
 export async function listarAlunos({ incluirInativos = false } = {}) {
-  const alunos = ler(K.alunos, [])
-  return alunos
-    .filter((a) => incluirInativos || a.ativo)
-    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+  let q = supabase.from('alunos').select('*').order('nome')
+  if (!incluirInativos) q = q.eq('ativo', true)
+  const { data, error } = await q
+  lancar(error, 'listarAlunos')
+  return data || []
 }
 
 export async function obterAluno(id) {
-  return ler(K.alunos, []).find((a) => a.id === id) || null
+  const { data, error } = await supabase.from('alunos').select('*').eq('id', id).maybeSingle()
+  lancar(error, 'obterAluno')
+  return data
 }
 
 export async function salvarAluno(dados) {
-  const alunos = ler(K.alunos, [])
   if (dados.id) {
-    const i = alunos.findIndex((a) => a.id === dados.id)
-    if (i >= 0) alunos[i] = { ...alunos[i], ...dados }
-    gravar(K.alunos, alunos)
-    return alunos[i]
+    const { data, error } = await supabase
+      .from('alunos')
+      .update(dados)
+      .eq('id', dados.id)
+      .select()
+      .single()
+    lancar(error, 'salvarAluno')
+    return data
   }
   const novo = {
     id: uid(),
@@ -77,39 +76,44 @@ export async function salvarAluno(dados) {
     criadoEm: toISOLocal(new Date()),
     ...dados,
   }
-  alunos.push(novo)
-  gravar(K.alunos, alunos)
-  return novo
+  const { data, error } = await supabase.from('alunos').insert(novo).select().single()
+  lancar(error, 'salvarAluno')
+  return data
 }
 
 export async function arquivarAluno(id) {
-  const alunos = ler(K.alunos, [])
-  const a = alunos.find((x) => x.id === id)
-  if (a) a.ativo = false
-  gravar(K.alunos, alunos)
+  const { error } = await supabase.from('alunos').update({ ativo: false }).eq('id', id)
+  lancar(error, 'arquivarAluno')
 }
 
 /* ---------------- aulas ---------------- */
 
 export async function listarAulas({ alunoId, deISO: de, ateISO: ate } = {}) {
-  let aulas = ler(K.aulas, [])
-  if (alunoId) aulas = aulas.filter((a) => a.alunoId === alunoId)
-  if (de) aulas = aulas.filter((a) => a.dataHora >= de)
-  if (ate) aulas = aulas.filter((a) => a.dataHora <= ate)
-  return aulas.sort((a, b) => a.dataHora.localeCompare(b.dataHora))
+  let q = supabase.from('aulas').select('*').order('dataHora')
+  if (alunoId) q = q.eq('alunoId', alunoId)
+  if (de) q = q.gte('dataHora', de)
+  if (ate) q = q.lte('dataHora', ate)
+  const { data, error } = await q
+  lancar(error, 'listarAulas')
+  return data || []
 }
 
 export async function obterAula(id) {
-  return ler(K.aulas, []).find((a) => a.id === id) || null
+  const { data, error } = await supabase.from('aulas').select('*').eq('id', id).maybeSingle()
+  lancar(error, 'obterAula')
+  return data
 }
 
 export async function salvarAula(dados) {
-  const aulas = ler(K.aulas, [])
   if (dados.id) {
-    const i = aulas.findIndex((a) => a.id === dados.id)
-    if (i >= 0) aulas[i] = { ...aulas[i], ...dados }
-    gravar(K.aulas, aulas)
-    return aulas[i]
+    const { data, error } = await supabase
+      .from('aulas')
+      .update(dados)
+      .eq('id', dados.id)
+      .select()
+      .single()
+    lancar(error, 'salvarAula')
+    return data
   }
   const nova = {
     id: uid(),
@@ -126,42 +130,42 @@ export async function salvarAula(dados) {
     obs: '',
     ...dados,
   }
-  aulas.push(nova)
-  gravar(K.aulas, aulas)
-  return nova
+  const { data, error } = await supabase.from('aulas').insert(nova).select().single()
+  lancar(error, 'salvarAula')
+  return data
 }
 
 export async function excluirAula(id) {
-  gravar(K.aulas, ler(K.aulas, []).filter((a) => a.id !== id))
+  const { error } = await supabase.from('aulas').delete().eq('id', id)
+  lancar(error, 'excluirAula')
 }
 
-// Materializa as aulas recorrentes da semana atual + 3 à frente.
-// Idempotente: usa a chave alunoId+dataHora — aula já criada (mesmo que
-// editada, cancelada ou excluída via status) não é recriada.
+// Materializa aulas recorrentes: semana atual + 3 à frente.
+// Idempotente pela chave alunoId|dataHora (aula cancelada permanece
+// como registro e não é recriada).
 export async function materializarRecorrentes() {
-  const alunos = ler(K.alunos, []).filter((a) => a.ativo && a.recorrencia?.length)
-  if (!alunos.length) return
-  const aulas = ler(K.aulas, [])
-  const existentes = new Set(aulas.map((a) => `${a.alunoId}|${a.dataHora}`))
-  const base = inicioSemana(hoje())
-  let mudou = false
+  const alunos = await listarAlunos()
+  const comRecorrencia = alunos.filter((a) => a.recorrencia?.length)
+  if (!comRecorrencia.length) return
 
-  for (const aluno of alunos) {
+  const base = inicioSemana(hoje())
+  const existentes = await listarAulas({ deISO: toISOLocal(base) })
+  const chaves = new Set(existentes.map((a) => `${a.alunoId}|${a.dataHora}`))
+  const novas = []
+
+  for (const aluno of comRecorrencia) {
     for (let sem = 0; sem < 4; sem++) {
       for (const rec of aluno.recorrencia) {
-        // rec.diaSemana: 0=dom..6=sáb; semana começa na segunda
-        const offsetDia = (rec.diaSemana + 6) % 7
+        const offsetDia = (rec.diaSemana + 6) % 7 // semana começa na segunda
         const dia = addDias(base, sem * 7 + offsetDia)
         const [h, m] = rec.hora.split(':').map(Number)
         dia.setHours(h, m, 0, 0)
         const dataHora = toISOLocal(dia)
         const chave = `${aluno.id}|${dataHora}`
-        if (existentes.has(chave)) continue
-        // não criar aulas no passado (antes de hoje)
+        if (chaves.has(chave)) continue
         if (deISO(dataHora) < hoje()) continue
-        existentes.add(chave)
-        mudou = true
-        aulas.push({
+        chaves.add(chave)
+        novas.push({
           id: uid(),
           alunoId: aluno.id,
           dataHora,
@@ -178,86 +182,87 @@ export async function materializarRecorrentes() {
       }
     }
   }
-  if (mudou) gravar(K.aulas, aulas)
+  if (novas.length) {
+    const { error } = await supabase.from('aulas').insert(novas)
+    lancar(error, 'materializarRecorrentes')
+  }
 }
 
 /* ---------------- pagamentos ---------------- */
 
 export async function listarPagamentos({ alunoId, periodo } = {}) {
-  let pags = ler(K.pagamentos, [])
-  if (alunoId) pags = pags.filter((p) => p.alunoId === alunoId)
-  if (periodo) pags = pags.filter((p) => (p.data || '').startsWith(periodo))
-  return pags.sort((a, b) => b.data.localeCompare(a.data))
+  let q = supabase.from('pagamentos').select('*').order('data', { ascending: false })
+  if (alunoId) q = q.eq('alunoId', alunoId)
+  if (periodo) q = q.like('data', `${periodo}%`)
+  const { data, error } = await q
+  lancar(error, 'listarPagamentos')
+  return data || []
 }
 
 export async function registrarPagamento({ alunoId, valor, forma, tipo, periodo, aulasIds = [], obs = '' }) {
-  const pags = ler(K.pagamentos, [])
   const pag = {
     id: uid(),
     alunoId,
     valor,
     forma,
-    tipo, // 'mensalidade' | 'aulas'
+    tipo,
     periodo: periodo || null,
     aulasIds,
     obs,
     data: toISOLocal(new Date()),
   }
-  pags.push(pag)
-  gravar(K.pagamentos, pags)
+  const { data, error } = await supabase.from('pagamentos').insert(pag).select().single()
+  lancar(error, 'registrarPagamento')
 
   if (aulasIds.length) {
-    const aulas = ler(K.aulas, [])
-    for (const a of aulas) {
-      if (aulasIds.includes(a.id)) a.pagamentoId = pag.id
-    }
-    gravar(K.aulas, aulas)
+    const { error: e2 } = await supabase
+      .from('aulas')
+      .update({ pagamentoId: data.id })
+      .in('id', aulasIds)
+    lancar(e2, 'registrarPagamento (vincular aulas)')
   }
-  return pag
+  return data
 }
 
 export async function excluirPagamento(id) {
-  const pags = ler(K.pagamentos, [])
-  gravar(K.pagamentos, pags.filter((p) => p.id !== id))
-  // desfaz o vínculo nas aulas
-  const aulas = ler(K.aulas, [])
-  let mudou = false
-  for (const a of aulas) {
-    if (a.pagamentoId === id) {
-      a.pagamentoId = null
-      mudou = true
-    }
-  }
-  if (mudou) gravar(K.aulas, aulas)
+  // FK aulas.pagamentoId tem ON DELETE SET NULL — as aulas voltam a pendentes sozinhas
+  const { error } = await supabase.from('pagamentos').delete().eq('id', id)
+  lancar(error, 'excluirPagamento')
 }
 
 /* ---------------- pendências (regra central) ---------------- */
 
-// Aulas cobráveis e ainda não pagas de um aluno (modalidade avulsa
-// ou aulas extra de mensalista): dada, ou falta com cobrança.
-export async function aulasPendentes(alunoId) {
-  const aulas = await listarAulas({ alunoId })
-  return aulas.filter(
-    (a) =>
-      a.valor > 0 &&
-      !a.pagamentoId &&
-      (a.status === 'dada' || (a.status === 'falta' && a.cobrarFalta))
+function ehCobravel(aula) {
+  return (
+    aula.valor > 0 &&
+    !aula.pagamentoId &&
+    (aula.status === 'dada' || (aula.status === 'falta' && aula.cobrarFalta))
   )
 }
 
-// Mensalidades sem pagamento — olha até 6 meses para trás (a partir do cadastro).
-export async function mensalidadesPendentes(aluno) {
+export async function aulasPendentes(alunoId) {
+  const { data, error } = await supabase
+    .from('aulas')
+    .select('*')
+    .eq('alunoId', alunoId)
+    .gt('valor', 0)
+    .is('pagamentoId', null)
+    .in('status', ['dada', 'falta'])
+    .order('dataHora')
+  lancar(error, 'aulasPendentes')
+  return (data || []).filter(ehCobravel)
+}
+
+function mensalidadesPendentesCalc(aluno, periodosPagos) {
   if (aluno.modalidade !== 'mensalista' || !aluno.valorMensal) return []
-  const pags = await listarPagamentos({ alunoId: aluno.id })
-  const pagos = new Set(pags.filter((p) => p.tipo === 'mensalidade').map((p) => p.periodo))
   const criado = deISO(aluno.criadoEm)
   const agora = new Date()
   const pendentes = []
   const cursor = new Date(agora.getFullYear(), agora.getMonth() - 5, 1)
   while (cursor <= agora) {
     const per = periodoDe(cursor)
-    const inicioMes = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)
-    if (inicioMes >= criado && !pagos.has(per)) {
+    const fimMes = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0)
+    if (fimMes >= criado && !periodosPagos.has(per)) {
       pendentes.push({ periodo: per, valor: aluno.valorMensal })
     }
     cursor.setMonth(cursor.getMonth() + 1)
@@ -265,55 +270,145 @@ export async function mensalidadesPendentes(aluno) {
   return pendentes
 }
 
-// Pendência total de um aluno (R$) — usada nos badges e no detalhe.
+export async function mensalidadesPendentes(aluno) {
+  const pags = await listarPagamentos({ alunoId: aluno.id })
+  const pagos = new Set(pags.filter((p) => p.tipo === 'mensalidade').map((p) => p.periodo))
+  return mensalidadesPendentesCalc(aluno, pagos)
+}
+
 export async function pendenciaAluno(aluno) {
-  const aulas = await aulasPendentes(aluno.id)
-  const mensal = await mensalidadesPendentes(aluno)
+  const [aulas, mensal] = await Promise.all([aulasPendentes(aluno.id), mensalidadesPendentes(aluno)])
   const totalAulas = aulas.reduce((s, a) => s + a.valor, 0)
   const totalMensal = mensal.reduce((s, m) => s + m.valor, 0)
   return { total: totalAulas + totalMensal, aulas, mensalidades: mensal }
 }
 
-// Resumo financeiro de um mês: previsto, recebido, pendente.
+// Resumo do mês em 4 consultas (não N por aluno).
 export async function resumoMes(periodo) {
-  const alunos = await listarAlunos()
-  const pags = ler(K.pagamentos, []).filter((p) => (p.data || '').startsWith(periodo))
-  const recebido = pags.reduce((s, p) => s + p.valor, 0)
+  const [alunos, pagsMes, aulasAbertas, pagsMensalidade] = await Promise.all([
+    listarAlunos(),
+    listarPagamentos({ periodo }),
+    supabase
+      .from('aulas')
+      .select('*')
+      .gt('valor', 0)
+      .is('pagamentoId', null)
+      .in('status', ['dada', 'falta'])
+      .then(({ data, error }) => {
+        lancar(error, 'resumoMes (aulas)')
+        return (data || []).filter(ehCobravel)
+      }),
+    supabase
+      .from('pagamentos')
+      .select('alunoId, periodo')
+      .eq('tipo', 'mensalidade')
+      .then(({ data, error }) => {
+        lancar(error, 'resumoMes (mensalidades)')
+        return data || []
+      }),
+  ])
+
+  const pagosPorAluno = new Map()
+  for (const p of pagsMensalidade) {
+    if (!pagosPorAluno.has(p.alunoId)) pagosPorAluno.set(p.alunoId, new Set())
+    pagosPorAluno.get(p.alunoId).add(p.periodo)
+  }
+
+  const recebido = pagsMes.reduce((s, p) => s + p.valor, 0)
   let pendente = 0
   const pendencias = []
   for (const aluno of alunos) {
-    const p = await pendenciaAluno(aluno)
-    if (p.total > 0) {
-      pendente += p.total
-      pendencias.push({ aluno, ...p })
+    const aulas = aulasAbertas.filter((a) => a.alunoId === aluno.id)
+    const mensalidades = mensalidadesPendentesCalc(aluno, pagosPorAluno.get(aluno.id) || new Set())
+    const total =
+      aulas.reduce((s, a) => s + a.valor, 0) + mensalidades.reduce((s, m) => s + m.valor, 0)
+    if (total > 0) {
+      pendente += total
+      pendencias.push({ aluno, total, aulas, mensalidades })
     }
   }
-  return { recebido, pendente, previsto: recebido + pendente, pendencias, pagamentos: pags }
+  return { recebido, pendente, previsto: recebido + pendente, pendencias, pagamentos: pagsMes }
 }
 
 /* ---------------- marcação de cobrança ---------------- */
 
 export async function marcarCobradas(aulasIds) {
-  const aulas = ler(K.aulas, [])
-  const agora = toISOLocal(new Date())
-  for (const a of aulas) {
-    if (aulasIds.includes(a.id)) a.cobradaEm = agora
-  }
-  gravar(K.aulas, aulas)
+  if (!aulasIds.length) return
+  const { error } = await supabase
+    .from('aulas')
+    .update({ cobradaEm: toISOLocal(new Date()) })
+    .in('id', aulasIds)
+  lancar(error, 'marcarCobradas')
 }
 
 /* ---------------- exportação ---------------- */
 
 export async function exportarDados() {
+  const [professor, alunos, aulas, pagamentos] = await Promise.all([
+    getProfessor(),
+    listarAlunos({ incluirInativos: true }),
+    listarAulas(),
+    listarPagamentos(),
+  ])
   return JSON.stringify(
-    {
-      professor: ler(K.professor, null),
-      alunos: ler(K.alunos, []),
-      aulas: ler(K.aulas, []),
-      pagamentos: ler(K.pagamentos, []),
-      exportadoEm: toISOLocal(new Date()),
-    },
+    { professor, alunos, aulas, pagamentos, exportadoEm: toISOLocal(new Date()) },
     null,
     2
   )
+}
+
+/* ---------------- migração da Fase 1 (localStorage) ---------------- */
+
+// Roda uma vez após login/cadastro: importa o que existir no aparelho
+// para a nuvem, se a conta ainda estiver vazia. Dados locais ficam
+// intactos como backup (apenas marcamos a migração como feita).
+export async function migrarDadosLocais() {
+  try {
+    if (localStorage.getItem('mc_migrado')) return
+
+    const ler = (k) => {
+      try {
+        return JSON.parse(localStorage.getItem(k))
+      } catch {
+        return null
+      }
+    }
+    const professorLocal = ler('mc_professor')
+    const alunosLocais = ler('mc_alunos') || []
+    const aulasLocais = ler('mc_aulas') || []
+    const pagamentosLocais = ler('mc_pagamentos') || []
+
+    if (!professorLocal?.nome && !alunosLocais.length) {
+      localStorage.setItem('mc_migrado', '1')
+      return
+    }
+
+    // conta já tem dados na nuvem? então não importa (evita duplicar)
+    const { count, error } = await supabase
+      .from('alunos')
+      .select('id', { count: 'exact', head: true })
+    lancar(error, 'migrarDadosLocais (verificação)')
+    if (count > 0) {
+      localStorage.setItem('mc_migrado', '1')
+      return
+    }
+
+    if (professorLocal?.nome) await salvarProfessor(professorLocal)
+    if (alunosLocais.length) {
+      const { error: e1 } = await supabase.from('alunos').insert(alunosLocais)
+      lancar(e1, 'migrarDadosLocais (alunos)')
+    }
+    if (pagamentosLocais.length) {
+      const { error: e2 } = await supabase.from('pagamentos').insert(pagamentosLocais)
+      lancar(e2, 'migrarDadosLocais (pagamentos)')
+    }
+    if (aulasLocais.length) {
+      const { error: e3 } = await supabase.from('aulas').insert(aulasLocais)
+      lancar(e3, 'migrarDadosLocais (aulas)')
+    }
+    localStorage.setItem('mc_migrado', '1')
+  } catch (e) {
+    // migração nunca deve travar o login; dados locais permanecem como backup
+    console.error('Migração local → nuvem falhou (tentará no próximo login):', e)
+  }
 }

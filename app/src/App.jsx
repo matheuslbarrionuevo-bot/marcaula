@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { useAuth } from './context/AuthContext.jsx'
 import { getProfessor, materializarRecorrentes } from './lib/api.js'
 import BottomNav from './components/BottomNav.jsx'
+import Login from './pages/Login.jsx'
 import Onboarding from './pages/Onboarding.jsx'
 import Agenda from './pages/Agenda.jsx'
 import NovaAula from './pages/NovaAula.jsx'
@@ -14,20 +16,34 @@ import Pagar from './pages/Pagar.jsx'
 import Perfil from './pages/Perfil.jsx'
 
 export default function App() {
+  const { sessao, carregando } = useAuth()
   const [pronto, setPronto] = useState(false)
   const [temProfessor, setTemProfessor] = useState(false)
   const location = useLocation()
 
+  // Bootstrap uma vez por login (não a cada navegação):
+  // lê o perfil e materializa as aulas recorrentes.
   useEffect(() => {
+    let ativo = true
     async function iniciar() {
+      if (!sessao) {
+        setPronto(false)
+        return
+      }
       const prof = await getProfessor()
+      if (!ativo) return
       setTemProfessor(!!prof?.nome)
       await materializarRecorrentes()
-      setPronto(true)
+      if (ativo) setPronto(true)
     }
     iniciar()
-  }, [location.pathname])
+    return () => {
+      ativo = false
+    }
+  }, [sessao?.user?.id])
 
+  if (carregando) return null
+  if (!sessao) return <Login />
   if (!pronto) return null
 
   const noOnboarding = location.pathname === '/onboarding'

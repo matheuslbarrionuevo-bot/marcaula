@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getProfessor, obterAluno, salvarAluno } from '../lib/api.js'
+import { getProfessor, obterAluno, salvarAluno, materializarRecorrentes } from '../lib/api.js'
 import { DIAS_SEMANA } from '../lib/datas.js'
 
 // Cadastro/edição de aluno — inclui modalidade, recorrência e política de falta.
@@ -71,6 +71,8 @@ export default function AlunoForm() {
       recorrencia,
       observacoes,
     })
+    // horário fixo novo/alterado vira aulas na hora, sem esperar o próximo boot
+    if (recorrencia.length) await materializarRecorrentes()
     nav(`/aluno/${salvo.id}`, { replace: true })
   }
 

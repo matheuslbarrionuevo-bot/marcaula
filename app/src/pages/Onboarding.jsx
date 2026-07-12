@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { salvarProfessor } from '../lib/api.js'
+import { useAuth } from '../context/AuthContext.jsx'
 
 // Onboarding em 3 passos rápidos: nome → PIX → valor padrão.
 // Meta: professor operacional em menos de 5 minutos.
 export default function Onboarding() {
+  const { usuario } = useAuth()
   const [passo, setPasso] = useState(0)
-  const [nome, setNome] = useState('')
+  const [nome, setNome] = useState(usuario?.user_metadata?.nome || '')
   const [chavePix, setChavePix] = useState('')
   const [valorAulaPadrao, setValorAulaPadrao] = useState('')
 

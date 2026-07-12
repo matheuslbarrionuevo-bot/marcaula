@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { getProfessor, salvarProfessor, exportarDados } from '../lib/api.js'
+import { useAuth } from '../context/AuthContext.jsx'
 
 export default function Perfil() {
+  const { usuario, sair } = useAuth()
   const [nome, setNome] = useState('')
   const [chavePix, setChavePix] = useState('')
   const [valorAulaPadrao, setValorAulaPadrao] = useState('')
@@ -85,8 +87,12 @@ export default function Perfil() {
         ⬇️ Exportar meus dados (backup)
       </button>
 
+      <button className="btn btn-cinza" style={{ marginTop: 8 }} onClick={sair}>
+        Sair da conta
+      </button>
+
       <p style={{ fontSize: '0.75rem', color: 'var(--cinza)', textAlign: 'center', marginTop: 20 }}>
-        Marcaula v0.1 · seus dados ficam somente neste aparelho nesta versão
+        Marcaula v0.2 · conectado como {usuario?.email} · dados sincronizados na nuvem
       </p>
     </div>
   )
