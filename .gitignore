@@ -4,5 +4,11 @@ dev-dist/
 .env
 .env.local
 *.keystore
+keystore.base64.txt
 *.log
 .DS_Store
+
+# build Android (gerado)
+twa/app/build/
+twa/.gradle/
+twa/build/
