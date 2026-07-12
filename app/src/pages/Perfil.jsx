@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
-import { getProfessor, salvarProfessor, exportarDados } from '../lib/api.js'
+import { useNavigate } from 'react-router-dom'
+import { getProfessor, salvarProfessor, exportarDados, statusPlano, LIMITE_ALUNOS_FREE } from '../lib/api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function Perfil() {
   const { usuario, sair } = useAuth()
+  const nav = useNavigate()
+  const [plano, setPlano] = useState(null)
   const [nome, setNome] = useState('')
   const [chavePix, setChavePix] = useState('')
   const [valorAulaPadrao, setValorAulaPadrao] = useState('')
@@ -18,6 +21,7 @@ export default function Perfil() {
       setValorAulaPadrao(String(p.valorAulaPadrao || ''))
       setDuracaoPadraoMin(p.duracaoPadraoMin || 60)
     })
+    statusPlano().then(setPlano)
   }, [])
 
   async function gravar() {
@@ -77,10 +81,25 @@ export default function Perfil() {
       </button>
 
       <div className="card" style={{ marginTop: 20 }}>
-        <div style={{ fontWeight: 700, marginBottom: 4 }}>Plano gratuito</div>
-        <div style={{ fontSize: '0.85rem', color: 'var(--cinza)' }}>
-          Até 5 alunos ativos. O plano Pro (R$ 14,90/mês, alunos ilimitados) chega em breve.
-        </div>
+        {plano?.plano === 'pro' ? (
+          <>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>⭐ Marcaula Pro</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--cinza)' }}>
+              Alunos ilimitados. Obrigado por apoiar o Marcaula!
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Plano gratuito</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--cinza)', marginBottom: 10 }}>
+              {plano ? `${plano.totalAtivos} de ${LIMITE_ALUNOS_FREE} alunos ativos.` : `Até ${LIMITE_ALUNOS_FREE} alunos ativos.`}{' '}
+              No Pro, alunos ilimitados por R$ 14,90/mês.
+            </div>
+            <button className="btn btn-claro" onClick={() => nav('/assinar')}>
+              ⭐ Conhecer o Marcaula Pro
+            </button>
+          </>
+        )}
       </div>
 
       <button className="btn btn-claro" style={{ marginTop: 8 }} onClick={exportar}>

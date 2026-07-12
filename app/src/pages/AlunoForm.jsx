@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getProfessor, obterAluno, salvarAluno, materializarRecorrentes } from '../lib/api.js'
+import { getProfessor, obterAluno, salvarAluno, materializarRecorrentes, statusPlano, LIMITE_ALUNOS_FREE } from '../lib/api.js'
 import { DIAS_SEMANA } from '../lib/datas.js'
 
 // Cadastro/edição de aluno — inclui modalidade, recorrência e política de falta.
@@ -16,9 +16,18 @@ export default function AlunoForm() {
   const [cobrarFalta, setCobrarFalta] = useState(true)
   const [recorrencia, setRecorrencia] = useState([])
   const [observacoes, setObservacoes] = useState('')
+  const [bloqueado, setBloqueado] = useState(false)
+  const [erroGravar, setErroGravar] = useState('')
 
   useEffect(() => {
     async function carregar() {
+      if (!id) {
+        const st = await statusPlano()
+        if (!st.podeCadastrar) {
+          setBloqueado(true)
+          return
+        }
+      }
       if (id) {
         const a = await obterAluno(id)
         if (a) {
@@ -59,6 +68,19 @@ export default function AlunoForm() {
     (modalidade === 'avulso' ? Number(valorAula) > 0 : Number(valorMensal) > 0)
 
   async function gravar() {
+    setErroGravar('')
+    try {
+      await gravarInterno()
+    } catch (e) {
+      if (String(e?.message || e).includes('LIMITE_FREE')) {
+        setBloqueado(true) // trava do banco: 6º aluno no plano free
+      } else {
+        setErroGravar(String(e?.message || e))
+      }
+    }
+  }
+
+  async function gravarInterno() {
     const salvo = await salvarAluno({
       ...(id ? { id } : {}),
       nome: nome.trim(),
@@ -74,6 +96,27 @@ export default function AlunoForm() {
     // horário fixo novo/alterado vira aulas na hora, sem esperar o próximo boot
     if (recorrencia.length) await materializarRecorrentes()
     nav(`/aluno/${salvo.id}`, { replace: true })
+  }
+
+  if (bloqueado) {
+    return (
+      <div className="tela">
+        <div className="topo">
+          <h1>Novo aluno</h1>
+          <button className="btn btn-cinza btn-mini" onClick={() => nav(-1)}>Fechar</button>
+        </div>
+        <div className="vazio">
+          <div className="emoji">🎉</div>
+          <p style={{ fontWeight: 700 }}>Você chegou aos {LIMITE_ALUNOS_FREE} alunos do plano gratuito!</p>
+          <p style={{ fontSize: '0.9rem', marginTop: 8 }}>
+            Para cadastrar alunos ilimitados, assine o Marcaula Pro por R$ 14,90/mês.
+          </p>
+        </div>
+        <button className="btn btn-primario" onClick={() => nav('/assinar')}>
+          ⭐ Conhecer o Marcaula Pro
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -163,6 +206,10 @@ export default function AlunoForm() {
         <label>Observações (opcional)</label>
         <textarea rows="2" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} placeholder="Ex.: prova em agosto, prefere aulas online…" />
       </div>
+
+      {erroGravar && (
+        <p style={{ color: 'var(--falta)', fontSize: '0.88rem', marginBottom: 10 }}>{erroGravar}</p>
+      )}
 
       <button className="btn btn-primario" disabled={!valido} style={{ opacity: valido ? 1 : 0.5 }} onClick={gravar}>
         {id ? 'Salvar alterações' : 'Cadastrar aluno'}

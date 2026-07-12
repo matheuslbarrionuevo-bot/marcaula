@@ -14,6 +14,7 @@ import Cobrancas from './pages/Cobrancas.jsx'
 import Cobrar from './pages/Cobrar.jsx'
 import Pagar from './pages/Pagar.jsx'
 import Perfil from './pages/Perfil.jsx'
+import Assinar from './pages/Assinar.jsx'
 
 export default function App() {
   const { sessao, carregando } = useAuth()
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="/cobrar/:alunoId" element={<Cobrar />} />
         <Route path="/pagar/:alunoId" element={<Pagar />} />
         <Route path="/perfil" element={<Perfil />} />
+        <Route path="/assinar" element={<Assinar />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {!noOnboarding && <BottomNav />}

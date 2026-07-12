@@ -330,6 +330,42 @@ export async function resumoMes(periodo) {
   return { recebido, pendente, previsto: recebido + pendente, pendencias, pagamentos: pagsMes }
 }
 
+/* ---------------- plano / paywall ---------------- */
+
+export const LIMITE_ALUNOS_FREE = 5
+
+// Situação do plano do professor: usada no gate de cadastro e no Perfil.
+export async function statusPlano() {
+  const [prof, { count, error }] = await Promise.all([
+    getProfessor(),
+    supabase.from('alunos').select('id', { count: 'exact', head: true }).eq('ativo', true),
+  ])
+  lancar(error, 'statusPlano')
+  const plano = prof?.assinatura || 'free'
+  const totalAtivos = count || 0
+  return {
+    plano,
+    totalAtivos,
+    limite: LIMITE_ALUNOS_FREE,
+    podeCadastrar: plano === 'pro' || totalAtivos < LIMITE_ALUNOS_FREE,
+  }
+}
+
+// Inicia a assinatura Pro: pede ao servidor o link de pagamento do
+// Mercado Pago e devolve a URL de checkout.
+export async function iniciarAssinatura() {
+  const { data } = await supabase.auth.getSession()
+  const token = data?.session?.access_token
+  if (!token) throw new Error('iniciarAssinatura: sem sessão')
+  const resp = await fetch('/api/criar-assinatura', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const corpo = await resp.json().catch(() => ({}))
+  if (!resp.ok) throw new Error(corpo?.erro || `Falha ao criar assinatura (${resp.status})`)
+  return corpo.url
+}
+
 /* ---------------- marcação de cobrança ---------------- */
 
 export async function marcarCobradas(aulasIds) {
