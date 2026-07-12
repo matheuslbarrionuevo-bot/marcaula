@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "marcaula",
+      "runtimeExecutable": "cmd.exe",
+      "runtimeArgs": [
+        "/c",
+        "set PATH=C:\\PROGRA~1\\nodejs;%PATH%&& cd /d app&& C:\\PROGRA~1\\nodejs\\npm.cmd run dev"
+      ],
+      "port": 5175
+    }
+  ]
+}
