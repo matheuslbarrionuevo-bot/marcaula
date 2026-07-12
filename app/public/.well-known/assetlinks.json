@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "br.com.marcaula.app",
+      "sha256_cert_fingerprints": [
+        "ED:55:40:85:8F:C6:29:9B:BA:44:EE:53:56:55:F8:13:84:33:39:6E:06:D9:30:72:22:B9:49:D3:0C:03:2C:DA"
+      ]
+    }
+  }
+]
