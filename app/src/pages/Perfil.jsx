@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getProfessor, salvarProfessor, exportarDados, statusPlano, LIMITE_ALUNOS_FREE } from '../lib/api.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { ehTWA } from '../lib/plataforma.js'
 
 export default function Perfil() {
   const { usuario, sair } = useAuth()
@@ -93,11 +94,18 @@ export default function Perfil() {
             <div style={{ fontWeight: 700, marginBottom: 4 }}>Plano gratuito</div>
             <div style={{ fontSize: '0.85rem', color: 'var(--cinza)', marginBottom: 10 }}>
               {plano ? `${plano.totalAtivos} de ${LIMITE_ALUNOS_FREE} alunos ativos.` : `Até ${LIMITE_ALUNOS_FREE} alunos ativos.`}{' '}
-              No Pro, alunos ilimitados por R$ 14,90/mês.
+              No Pro, alunos ilimitados.
             </div>
-            <button className="btn btn-claro" onClick={() => nav('/assinar')}>
-              ⭐ Conhecer o Marcaula Pro
-            </button>
+            {ehTWA() ? (
+              // política de faturamento da Play: sem venda dentro do app Android
+              <div style={{ fontSize: '0.85rem', color: 'var(--cinza)' }}>
+                O plano Pro pode ser gerenciado pelo site do Marcaula.
+              </div>
+            ) : (
+              <button className="btn btn-claro" onClick={() => nav('/assinar')}>
+                ⭐ Conhecer o Marcaula Pro
+              </button>
+            )}
           </>
         )}
       </div>
@@ -112,6 +120,11 @@ export default function Perfil() {
 
       <p style={{ fontSize: '0.75rem', color: 'var(--cinza)', textAlign: 'center', marginTop: 20 }}>
         Marcaula v0.2 · conectado como {usuario?.email} · dados sincronizados na nuvem
+      </p>
+      <p style={{ fontSize: '0.75rem', textAlign: 'center', marginTop: 6 }}>
+        <a href="/privacidade" style={{ color: 'var(--cinza)' }}>Privacidade</a>
+        {' · '}
+        <a href="/excluir-conta" style={{ color: 'var(--cinza)' }}>Excluir conta</a>
       </p>
     </div>
   )

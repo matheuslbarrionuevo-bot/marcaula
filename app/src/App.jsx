@@ -15,6 +15,8 @@ import Cobrar from './pages/Cobrar.jsx'
 import Pagar from './pages/Pagar.jsx'
 import Perfil from './pages/Perfil.jsx'
 import Assinar from './pages/Assinar.jsx'
+import Privacidade from './pages/Privacidade.jsx'
+import ExcluirConta from './pages/ExcluirConta.jsx'
 
 export default function App() {
   const { sessao, carregando } = useAuth()
@@ -42,6 +44,10 @@ export default function App() {
       ativo = false
     }
   }, [sessao?.user?.id])
+
+  // Páginas públicas — exigência da Play: acessíveis sem login
+  if (location.pathname === '/privacidade') return <Privacidade />
+  if (location.pathname === '/excluir-conta') return <ExcluirConta />
 
   if (carregando) return null
   if (!sessao) return <Login />

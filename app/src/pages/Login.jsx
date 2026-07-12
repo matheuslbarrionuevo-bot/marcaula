@@ -86,6 +86,9 @@ export default function Login() {
       <p style={{ fontSize: '0.78rem', color: 'var(--cinza)', textAlign: 'center', marginTop: 16 }}>
         Grátis até 5 alunos. Seus dados ficam seguros na nuvem.
       </p>
+      <p style={{ fontSize: '0.75rem', textAlign: 'center', marginTop: 8 }}>
+        <a href="/privacidade" style={{ color: 'var(--cinza)' }}>Política de privacidade</a>
+      </p>
     </div>
   )
 }

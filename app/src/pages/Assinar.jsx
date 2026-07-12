@@ -1,10 +1,31 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { statusPlano, iniciarAssinatura, LIMITE_ALUNOS_FREE } from '../lib/api.js'
+import { ehTWA } from '../lib/plataforma.js'
 
 // Página de upgrade: grátis (5 alunos) → Pro R$ 14,90/mês.
 export default function Assinar() {
   const nav = useNavigate()
+
+  // política de faturamento da Play: dentro do app Android não há venda
+  if (ehTWA()) {
+    return (
+      <div className="tela">
+        <div className="topo">
+          <h1>Marcaula Pro</h1>
+          <button className="btn btn-cinza btn-mini" onClick={() => nav(-1)}>Fechar</button>
+        </div>
+        <div className="vazio">
+          <div className="emoji">⭐</div>
+          <p>O plano Pro pode ser gerenciado pelo site do Marcaula.</p>
+        </div>
+      </div>
+    )
+  }
+  return <AssinarWeb nav={nav} />
+}
+
+function AssinarWeb({ nav }) {
   const [status, setStatus] = useState(null)
   const [erro, setErro] = useState('')
   const [ocupado, setOcupado] = useState(false)

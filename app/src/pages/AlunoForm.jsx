@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getProfessor, obterAluno, salvarAluno, materializarRecorrentes, statusPlano, LIMITE_ALUNOS_FREE } from '../lib/api.js'
 import { DIAS_SEMANA } from '../lib/datas.js'
+import { ehTWA } from '../lib/plataforma.js'
 
 // Cadastro/edição de aluno — inclui modalidade, recorrência e política de falta.
 export default function AlunoForm() {
@@ -109,12 +110,16 @@ export default function AlunoForm() {
           <div className="emoji">🎉</div>
           <p style={{ fontWeight: 700 }}>Você chegou aos {LIMITE_ALUNOS_FREE} alunos do plano gratuito!</p>
           <p style={{ fontSize: '0.9rem', marginTop: 8 }}>
-            Para cadastrar alunos ilimitados, assine o Marcaula Pro por R$ 14,90/mês.
+            {ehTWA()
+              ? 'Para cadastrar alunos ilimitados, gerencie seu plano pelo site do Marcaula.'
+              : 'Para cadastrar alunos ilimitados, assine o Marcaula Pro por R$ 14,90/mês.'}
           </p>
         </div>
-        <button className="btn btn-primario" onClick={() => nav('/assinar')}>
-          ⭐ Conhecer o Marcaula Pro
-        </button>
+        {!ehTWA() && (
+          <button className="btn btn-primario" onClick={() => nav('/assinar')}>
+            ⭐ Conhecer o Marcaula Pro
+          </button>
+        )}
       </div>
     )
   }
